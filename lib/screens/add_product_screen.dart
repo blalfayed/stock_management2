@@ -58,11 +58,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
         final bytes = await file.readAsBytes();
         final base64Image = base64Encode(bytes);
 
-        // حفظ الصورة في قاعدة البيانات
-        await _dbHelper.insertPhoto(base64Image); // استدعاء صحيح للدالة
+        // حفظ الصورة في قاعدة البيانات (Base64)
+        await _dbHelper.insertPhoto(base64Image);
 
         setState(() {
-          _photoUrl = pickedFile.path; // حفظ المسار
+          _photoUrl = base64Image; // حفظ الصورة المشفرة في المتغير
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
