@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:stock_management2/data/database_helper.dart';
 import 'package:stock_management2/models/product.dart';
 import 'package:stock_management2/screens/add_product_screen.dart';
+import 'package:stock_management2/screens/product_details_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -104,6 +105,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () => _deleteProduct(product.id!),
                     ),
+                    // onTap: () => Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     builder: (context) =>
+                    //         AddProductScreen(product: product),
+                    //   ),
+                    // ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ProductDetailsScreen(product: product),
+                        ),
+                      );
+                    },
                   ),
                 );
               },

@@ -6,7 +6,7 @@ import '../data/database_helper.dart';
 import '../models/product.dart';
 
 class AddProductScreen extends StatefulWidget {
-  final Product? product; // إضافة خاصية product لتحديث البيانات
+  final Product? product;
 
   const AddProductScreen({super.key, this.product});
 
@@ -23,7 +23,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _locationController = TextEditingController();
   final _expiryDateController = TextEditingController();
 
-  String? _photoUrl;
+  String? _photoBase64;
 
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
@@ -32,7 +32,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void initState() {
     super.initState();
-    // ملء البيانات إذا كان التعديل
     if (widget.product != null) {
       _nameController.text = widget.product!.name;
       _descriptionController.text = widget.product!.description ?? '';
@@ -40,11 +39,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _priceController.text = widget.product!.price.toString();
       _locationController.text = widget.product!.location ?? '';
       _expiryDateController.text = widget.product!.expiryDate ?? '';
-      _photoUrl = widget.product!.photo;
+      _photoBase64 = widget.product!.photo;
     }
   }
 
-  // التقاط الصورة وحفظها
   Future<void> _pickAndSavePhoto() async {
     try {
       final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -58,20 +56,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
         final bytes = await file.readAsBytes();
         final base64Image = base64Encode(bytes);
 
-        // حفظ الصورة في قاعدة البيانات (Base64)
-        await _dbHelper.insertPhoto(base64Image);
-
         setState(() {
-          _photoUrl = base64Image; // حفظ الصورة المشفرة في المتغير
+          _photoBase64 = base64Image;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ الصورة بنجاح!')),
+          const SnackBar(content: Text('تم تحميل الصورة بنجاح!')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء حفظ الصورة: $e')),
+        SnackBar(content: Text('حدث خطأ أثناء تحميل الصورة: $e')),
       );
     } finally {
       setState(() {
@@ -80,9 +75,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  // حفظ المنتج
   Future<void> _saveProduct() async {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
       final name = _nameController.text;
       final description = _descriptionController.text;
       final quantity = int.tryParse(_quantityController.text) ?? 0;
@@ -92,7 +90,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       final product = Product(
         id: widget.product?.id ?? DateTime.now().millisecondsSinceEpoch,
-        photo: _photoUrl ?? '',
+        photo: _photoBase64 ?? '',
         name: name,
         description: description,
         quantity: quantity,
@@ -101,13 +99,29 @@ class _AddProductScreenState extends State<AddProductScreen> {
         expiryDate: expiryDate,
       );
 
-      if (widget.product == null) {
-        await _dbHelper.insertProduct(product); // إدخال المنتج
-      } else {
-        await _dbHelper.updateProduct(product); // تحديث المنتج
-      }
+      try {
+        if (widget.product == null) {
+          await _dbHelper.insertProduct(product);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم إضافة المنتج بنجاح!')),
+          );
+        } else {
+          await _dbHelper.updateProduct(product);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم حفظ التعديلات بنجاح!')),
+          );
+        }
 
-      Navigator.pop(context);
+        Navigator.pop(context);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ أثناء حفظ المنتج: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -180,10 +194,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ? 'إضافة المنتج'
                         : 'حفظ التعديلات'),
                   ),
-                  if (_photoUrl != null && _photoUrl!.isNotEmpty)
+                  if (_photoBase64 != null && _photoBase64!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 16.0),
-                      child: Image.file(File(_photoUrl!), height: 150),
+                      child: Image.memory(
+                        base64Decode(_photoBase64!),
+                        height: 150,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                 ],
               ),
